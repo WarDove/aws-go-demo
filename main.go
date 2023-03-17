@@ -6,6 +6,7 @@ import (
 	_ "github.com/lib/pq"
 	"html/template"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 )
@@ -64,7 +65,7 @@ func getLastRequests(db *sql.DB, n int) []struct {
 
 func main() {
 	// Set up database connection
-	db, err := sql.Open("postgres", "postgres://user:password@localhost/mydb?sslmode=disable")
+	db, err := sql.Open("postgres", "postgres://demouser:demopass@localhost/awsgodemo?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
@@ -140,6 +141,11 @@ func main() {
 		fmt.Fprintf(w, "Logged request from %s at %s", ip, timestamp)
 	})
 
-	fmt.Println("Listening on port 80...")
-	http.ListenAndServe(":80", nil)
+	err = http.ListenAndServe(":80", nil)
+	if err != nil {
+		log.Println(err)
+	} else {
+		log.Println("listening on port 80...")
+	}
+
 }
