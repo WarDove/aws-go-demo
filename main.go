@@ -76,12 +76,9 @@ func main() {
 	http.HandleFunc("/confirm", confirmHandler)
 	http.HandleFunc("/forgot_password", forgotPasswordHandler)
 
-	// Set up AWS session and Cognito client
-	//sess := session.Must(session.NewSessionWithOptions(session.Options{
-	//	SharedConfigState: session.SharedConfigEnable,
-	//}))
-	//
+	// Extend cookie size to 8KB
 
+	// Set up AWS session and Cognito client
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String("eu-west-1"), // replace with your desired region
 	})

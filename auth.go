@@ -107,22 +107,15 @@ func confirmHandler(w http.ResponseWriter, r *http.Request) {
 		email := r.FormValue("email")
 		confirmation_code := r.FormValue("confirmation_code")
 
-		// Debug
-		fmt.Println(email)
-		fmt.Println(confirmation_code)
-
 		// Calculate the SecretHash
 		secretHash := createSecretHash(email, appClientID, appClientSecret)
 
-		confirmOutput, err := cognitoClient.ConfirmSignUp(&cognitoidentityprovider.ConfirmSignUpInput{
+		_, err := cognitoClient.ConfirmSignUp(&cognitoidentityprovider.ConfirmSignUpInput{
 			ClientId:         &appClientID,
 			Username:         &email,
 			ConfirmationCode: &confirmation_code,
 			SecretHash:       &secretHash,
 		})
-
-		// Debug
-		fmt.Println(confirmOutput)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -219,7 +212,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	// Set session cookie
 	session.Values["authenticated"] = true
 	session.Values["accessToken"] = *authResult.AuthenticationResult.AccessToken
-	session.Values["idToken"] = authResult.AuthenticationResult.IdToken
+	//session.Values["idToken"] = authResult.AuthenticationResult.IdToken
 	session.Values["email"] = email
 	err = session.Save(r, w)
 	if err != nil {
