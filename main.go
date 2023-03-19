@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 	"html/template"
@@ -73,9 +74,14 @@ func main() {
 	http.HandleFunc("/forgot_password", forgotPasswordHandler)
 
 	// Set up AWS session and Cognito client
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
+	//sess := session.Must(session.NewSessionWithOptions(session.Options{
+	//	SharedConfigState: session.SharedConfigEnable,
+	//}))
+	//
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String("eu-west-1"), // replace with your desired region
+	})
+
 	cognitoClient = cognitoidentityprovider.New(sess)
 
 	// Set up database connection
