@@ -73,6 +73,7 @@ func main() {
 
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/signup", signUpHandler)
+	http.HandleFunc("/confirm", confirmHandler)
 	http.HandleFunc("/forgot_password", forgotPasswordHandler)
 
 	// Set up AWS session and Cognito client

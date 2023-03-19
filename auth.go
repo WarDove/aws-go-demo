@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 	"github.com/gorilla/sessions"
 	_ "github.com/lib/pq"
+	"log"
 	"net/http"
 	"text/template"
 )
@@ -18,7 +19,7 @@ var (
 	appClientSecret string = "1df1cvo0m97ipc8q793knjmd82tmc8gn94f7fn4n0t0o093b1ibb"
 	store                  = sessions.NewCookieStore([]byte("someverysecretkey"))
 	templates              = template.Must(template.ParseFiles(
-		"templates/signup.html", "templates/login.html", "templates/forgot_password.html",
+		"templates/signup.html", "templates/login.html", "templates/confirm.html", "templates/forgot_password.html",
 	))
 )
 
@@ -51,6 +52,18 @@ func signUpHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		email := r.FormValue("email")
 		password := r.FormValue("password")
+		confirmPassword := r.FormValue("confirm_password")
+
+		if password != confirmPassword {
+			log.Printf("Passwords do not match, signup event for %s\n", email)
+			data := struct {
+				Error string
+			}{
+				Error: "Passwords do not match",
+			}
+			renderTemplate(w, "signup.html", data)
+			return
+		}
 
 		// Calculate the SecretHash
 		secretHash := createSecretHash(email, appClientID, appClientSecret)
@@ -69,14 +82,64 @@ func signUpHandler(w http.ResponseWriter, r *http.Request) {
 			},
 		})
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Println(err.Error())
+			data := struct {
+				Error string
+			}{
+				Error: err.Error(),
+			}
+			renderTemplate(w, "signup.html", data)
 			return
 		}
 
-		fmt.Fprintf(w, "Sign-up successful!")
+		// Render the confirmation code form
+		renderTemplate(w, "confirm.html", map[string]interface{}{
+			"email": email,
+		})
 	} else {
 		// Render the sign-up form
 		renderTemplate(w, "signup.html", nil)
+	}
+}
+
+func confirmHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		email := r.FormValue("email")
+		confirmation_code := r.FormValue("confirmation_code")
+
+		// Debug
+		fmt.Println(email)
+		fmt.Println(confirmation_code)
+
+		// Calculate the SecretHash
+		secretHash := createSecretHash(email, appClientID, appClientSecret)
+
+		confirmOutput, err := cognitoClient.ConfirmSignUp(&cognitoidentityprovider.ConfirmSignUpInput{
+			ClientId:         &appClientID,
+			Username:         &email,
+			ConfirmationCode: &confirmation_code,
+			SecretHash:       &secretHash,
+		})
+
+		// Debug
+		fmt.Println(confirmOutput)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Passwords do not match", http.StatusBadRequest)
+			data := struct {
+				Error error
+			}{
+				Error: err,
+			}
+			renderTemplate(w, "confirm.html", data)
+			return
+		}
+		fmt.Fprintf(w, "Confirmation successful!")
+
+	} else {
+		// Render the confirmation form
+		renderTemplate(w, "confirm.html", nil)
 	}
 }
 
