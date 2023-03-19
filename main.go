@@ -3,13 +3,16 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/lib/pq"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 )
+
+var cognitoClient *cognitoidentityprovider.CognitoIdentityProvider
 
 func getMetadata(path string) string {
 	resp, err := http.Get("http://169.254.169.254/latest/meta-data/" + path)
@@ -30,8 +33,8 @@ func getLastRequests(db *sql.DB, n int) []struct {
 	Timestamp time.Time
 } {
 	rows, err := db.Query(`
-		SELECT ip, timestamp
-		FROM requests
+		SELECT ip, timestamp, user
+		FROM userLog
 		ORDER BY id DESC
 		LIMIT $1
 	`, n)
@@ -64,6 +67,13 @@ func getLastRequests(db *sql.DB, n int) []struct {
 }
 
 func main() {
+
+	// Set up AWS session and Cognito client
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	cognitoClient = cognitoidentityprovider.New(sess)
+
 	// Set up database connection
 	db, err := sql.Open("postgres", "postgres://demouser:demopass@localhost/awsgodemo?sslmode=disable")
 	if err != nil {
@@ -73,9 +83,10 @@ func main() {
 
 	// Create table for storing request data
 	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS requests (
+		CREATE TABLE IF NOT EXISTS userLog (
 			id SERIAL PRIMARY KEY,
 			ip TEXT,
+			user TEXT,
 			timestamp TIMESTAMP
 		)
 	`)
@@ -86,7 +97,25 @@ func main() {
 	// Define route handlers
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
+		session, err := store.Get(r, "userSession")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if session.Values["authenticated"] != true {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		email, ok := session.Values["email"].(string)
+		if !ok {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+
 		data := struct {
+			Email      string
 			InstanceId string
 			PrivateIp  string
 			Requests   []struct {
@@ -94,27 +123,32 @@ func main() {
 				Timestamp time.Time
 			}
 		}{
+			Email:      email,
 			InstanceId: getMetadata("instance-id"),
 			PrivateIp:  getMetadata("local-ipv4"),
 			Requests:   getLastRequests(db, 5),
 		}
 
 		tmpl, err := template.New("index").Parse(`
-			<!doctype html>
-			<html>
-			<head><title>EC2 Instance Metadata</title></head>
-			<body>
-				<h1>EC2 Instance Metadata</h1>
-				<p><strong>Instance ID:</strong> {{.InstanceId}}</p>
-				<p><strong>Private IP:</strong> {{.PrivateIp}}</p>
-				<h2>Last 5 Requests:</h2>
-				<ul>
-				{{range .Requests}}
-					<li>{{.Ip}} - {{.Timestamp}}</li>
-				{{end}}
-				</ul>
-			</body>
-			</html>
+		<!doctype html>
+		<html>
+		<head><title>EC2 Instance Metadata</title></head>
+		<body>
+			<h2>User Email: {{.Email}}</h2>
+			<h1>EC2 Instance Metadata</h1>
+			<p><strong>Instance ID:</strong> {{.InstanceId}}</p>
+			<p><strong>Private IP:</strong> {{.PrivateIp}}</p>
+			<h2>Last 5 Requests:</h2>
+			<ul>
+			{{range .Requests}}
+				<li>{{.Ip}} - {{.Timestamp}}</li>
+			{{end}}
+			</ul>
+			<form method="POST" action="/log">
+				<button type="submit">LOG</button>
+			</form>
+		</body>
+		</html>
 		`)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -129,16 +163,29 @@ func main() {
 	})
 
 	http.HandleFunc("/log", func(w http.ResponseWriter, r *http.Request) {
-		ip := r.RemoteAddr
-		timestamp := time.Now().UTC()
 
-		_, err := db.Exec("INSERT INTO requests (ip, timestamp) VALUES ($1, $2)", ip, timestamp)
+		session, err := store.Get(r, "userSession")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		fmt.Fprintf(w, "Logged request from %s at %s", ip, timestamp)
+		if session.Values["authenticated"] != true {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		ip := r.RemoteAddr
+		timestamp := time.Now().UTC()
+		user := session.Values["email"]
+
+		_, err = db.Exec("INSERT INTO requests (ip, timestamp, user) VALUES ($1, $2, $3)", ip, timestamp, user)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Fprintf(w, "Logged request from %s at %s by %s", ip, timestamp, user)
 	})
 
 	err = http.ListenAndServe(":80", nil)
