@@ -156,7 +156,7 @@ func main() {
 			<h2>Last 5 log entries:</h2>
 			<ul>
 			{{range .Records}}
-				<li>{{.Ip}} - {{.Timestamp}}</li>
+				<li>SourceIP: {{.Ip}}, Timestamp: {{.Timestamp}}, User Email: {{.Email}} </li>
 			{{end}}
 			</ul>
 			<form method="POST" action="/log">
