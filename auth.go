@@ -144,7 +144,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}{
 			Error: err.Error(),
 		}
-		renderTemplate(w, "login", data)
+		renderTemplate(w, "login.html", data)
 		return
 	}
 
@@ -158,7 +158,5 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	//can := *authResult.AuthenticationResult.IdToken
-
 	http.Redirect(w, r, "/", http.StatusFound)
 }
