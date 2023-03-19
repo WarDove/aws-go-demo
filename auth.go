@@ -5,6 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 	"github.com/gorilla/sessions"
+	_ "github.com/lib/pq"
 	"net/http"
 	"text/template"
 )

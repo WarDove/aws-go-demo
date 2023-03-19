@@ -68,6 +68,10 @@ func getLastRequests(db *sql.DB, n int) []struct {
 
 func main() {
 
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/signup", signUpHandler)
+	http.HandleFunc("/forgot_password", forgotPasswordHandler)
+
 	// Set up AWS session and Cognito client
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
@@ -86,7 +90,7 @@ func main() {
 		CREATE TABLE IF NOT EXISTS userLog (
 			id SERIAL PRIMARY KEY,
 			ip TEXT,
-			user TEXT,
+			email TEXT,
 			timestamp TIMESTAMP
 		)
 	`)
@@ -177,15 +181,15 @@ func main() {
 
 		ip := r.RemoteAddr
 		timestamp := time.Now().UTC()
-		user := session.Values["email"]
+		email := session.Values["email"]
 
-		_, err = db.Exec("INSERT INTO requests (ip, timestamp, user) VALUES ($1, $2, $3)", ip, timestamp, user)
+		_, err = db.Exec("INSERT INTO requests (ip, timestamp, email) VALUES ($1, $2, $3)", ip, timestamp, email)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		fmt.Fprintf(w, "Logged request from %s at %s by %s", ip, timestamp, user)
+		fmt.Fprintf(w, "Logged request from %s at %s by %s", ip, timestamp, email)
 	})
 
 	err = http.ListenAndServe(":80", nil)
