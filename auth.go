@@ -128,15 +128,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Calculate the SecretHash
+	secretHash := createSecretHash(email, appClientID, appClientSecret)
+
 	// Authenticate user
 	authParams := &cognitoidentityprovider.InitiateAuthInput{
 		AuthFlow: aws.String("USER_PASSWORD_AUTH"),
 		AuthParameters: map[string]*string{
-			"USERNAME": aws.String(email),
-			"PASSWORD": aws.String(password),
+			"USERNAME":    aws.String(email),
+			"PASSWORD":    aws.String(password),
+			"SECRET_HASH": aws.String(secretHash),
 		},
 		ClientId: aws.String(appClientID),
 	}
+
 	authResult, err := cognitoClient.InitiateAuth(authParams)
 	if err != nil {
 		data := struct {
