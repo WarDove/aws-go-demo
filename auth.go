@@ -56,7 +56,7 @@ func signUpHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Sign-up successful!")
 	} else {
 		// Render the sign-up form
-		renderTemplate(w, "signup", nil)
+		renderTemplate(w, "signup.html", nil)
 	}
 }
 
@@ -77,7 +77,7 @@ func forgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Password reset email sent!")
 	} else {
 		// Render the forgot password form
-		renderTemplate(w, "forgot_password", nil)
+		renderTemplate(w, "forgot_password.html", nil)
 	}
 }
 
@@ -104,7 +104,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}{
 			Error: "Please enter your email and password",
 		}
-		renderTemplate(w, "login", data)
+		renderTemplate(w, "login.html", data)
 		return
 	}
 
