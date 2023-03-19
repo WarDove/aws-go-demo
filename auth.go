@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
@@ -11,9 +14,10 @@ import (
 )
 
 var (
-	appClientID string = "q62763s8s2hhk0hsdtge82f7a"
-	store              = sessions.NewCookieStore([]byte("someverysecretkey"))
-	templates          = template.Must(template.ParseFiles(
+	appClientID     string = "q62763s8s2hhk0hsdtge82f7a"
+	appClientSecret string = "1df1cvo0m97ipc8q793knjmd82tmc8gn94f7fn4n0t0o093b1ibb"
+	store                  = sessions.NewCookieStore([]byte("someverysecretkey"))
+	templates              = template.Must(template.ParseFiles(
 		"templates/signup.html", "templates/login.html", "templates/forgot_password.html",
 	))
 )
@@ -31,16 +35,32 @@ func renderTemplate(w http.ResponseWriter, name string, data interface{}) {
 	}
 }
 
+func createSecretHash(username, clientID, clientSecret string) string {
+	message := []byte(username + clientID)
+	key := []byte(clientSecret)
+	h := hmac.New(sha256.New, key)
+	_, err := h.Write(message)
+	if err != nil {
+		return ""
+	}
+	hash := base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return hash
+}
+
 func signUpHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		email := r.FormValue("email")
 		password := r.FormValue("password")
 
+		// Calculate the SecretHash
+		secretHash := createSecretHash(email, appClientID, appClientSecret)
+
 		// Create the user in Cognito
 		_, err := cognitoClient.SignUp(&cognitoidentityprovider.SignUpInput{
-			ClientId: &appClientID,
-			Username: &email,
-			Password: &password,
+			ClientId:   &appClientID,
+			Username:   &email,
+			Password:   &password,
+			SecretHash: &secretHash,
 			UserAttributes: []*cognitoidentityprovider.AttributeType{
 				{
 					Name:  aws.String("email"),

@@ -13,7 +13,9 @@ import (
 	"time"
 )
 
-var cognitoClient *cognitoidentityprovider.CognitoIdentityProvider
+var (
+	cognitoClient *cognitoidentityprovider.CognitoIdentityProvider
+)
 
 func getMetadata(path string) string {
 	resp, err := http.Get("http://169.254.169.254/latest/meta-data/" + path)
@@ -78,6 +80,7 @@ func main() {
 	//	SharedConfigState: session.SharedConfigEnable,
 	//}))
 	//
+
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String("eu-west-1"), // replace with your desired region
 	})
