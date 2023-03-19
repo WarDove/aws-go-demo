@@ -31,12 +31,13 @@ func getMetadata(path string) string {
 	return string(body)
 }
 
-func getLastRequests(db *sql.DB, n int) []struct {
+func getLastRecords(db *sql.DB, n int) []struct {
 	Ip        string
 	Timestamp time.Time
+	Email     string
 } {
 	rows, err := db.Query(`
-		SELECT ip, timestamp, user
+		SELECT ip, timestamp, email
 		FROM userLog
 		ORDER BY id DESC
 		LIMIT $1
@@ -46,27 +47,29 @@ func getLastRequests(db *sql.DB, n int) []struct {
 	}
 	defer rows.Close()
 
-	var requests []struct {
+	var records []struct {
 		Ip        string
 		Timestamp time.Time
+		Email     string
 	}
 
 	for rows.Next() {
-		var request struct {
+		var record struct {
 			Ip        string
 			Timestamp time.Time
+			Email     string
 		}
-		if err := rows.Scan(&request.Ip, &request.Timestamp); err != nil {
+		if err := rows.Scan(&record.Ip, &record.Timestamp, &record.Email); err != nil {
 			panic(err)
 		}
-		requests = append(requests, request)
+		records = append(records, record)
 	}
 
 	if err := rows.Err(); err != nil {
 		panic(err)
 	}
 
-	return requests
+	return records
 }
 
 func main() {
@@ -92,7 +95,7 @@ func main() {
 	}
 	defer db.Close()
 
-	// Create table for storing request data
+	// Create table for storing user log data
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS userLog (
 			id SERIAL PRIMARY KEY,
@@ -129,15 +132,16 @@ func main() {
 			Email      string
 			InstanceId string
 			PrivateIp  string
-			Requests   []struct {
+			Records    []struct {
 				Ip        string
 				Timestamp time.Time
+				Email     string
 			}
 		}{
 			Email:      email,
 			InstanceId: getMetadata("instance-id"),
 			PrivateIp:  getMetadata("local-ipv4"),
-			Requests:   getLastRequests(db, 5),
+			Records:    getLastRecords(db, 5),
 		}
 
 		tmpl, err := template.New("index").Parse(`
@@ -149,9 +153,9 @@ func main() {
 			<h1>EC2 Instance Metadata</h1>
 			<p><strong>Instance ID:</strong> {{.InstanceId}}</p>
 			<p><strong>Private IP:</strong> {{.PrivateIp}}</p>
-			<h2>Last 5 Requests:</h2>
+			<h2>Last 5 log entries:</h2>
 			<ul>
-			{{range .Requests}}
+			{{range .Records}}
 				<li>{{.Ip}} - {{.Timestamp}}</li>
 			{{end}}
 			</ul>
@@ -190,13 +194,13 @@ func main() {
 		timestamp := time.Now().UTC()
 		email := session.Values["email"]
 
-		_, err = db.Exec("INSERT INTO requests (ip, timestamp, email) VALUES ($1, $2, $3)", ip, timestamp, email)
+		_, err = db.Exec("INSERT INTO userLog (ip, timestamp, email) VALUES ($1, $2, $3)", ip, timestamp, email)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		fmt.Fprintf(w, "Logged request from %s at %s by %s", ip, timestamp, email)
+		fmt.Fprintf(w, "Logged record from %s at %s by %s", ip, timestamp, email)
 	})
 
 	err = http.ListenAndServe(":80", nil)
