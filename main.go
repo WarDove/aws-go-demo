@@ -105,6 +105,7 @@ func main() {
 	http.HandleFunc("/confirm", confirmHandler)
 	http.HandleFunc("/forgot_password", forgotPasswordHandler)
 	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/reset", resetPasswordHandler)
 	http.HandleFunc("/", mainHandler)
 
 	// TODO: move to handlers once we have ssm solution

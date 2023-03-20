@@ -20,7 +20,7 @@ var (
 	appClientSecret string = "1df1cvo0m97ipc8q793knjmd82tmc8gn94f7fn4n0t0o093b1ibb"
 	store                  = sessions.NewCookieStore([]byte("someverysecretkey")) // TODO: store as secret!
 	templates              = template.Must(template.ParseFiles(
-		"templates/log.html", "templates/index.html", "templates/signup.html", "templates/login.html", "templates/confirm.html", "templates/forgot_password.html",
+		"templates/reset_password.html", "templates/log.html", "templates/index.html", "templates/signup.html", "templates/login.html", "templates/confirm.html", "templates/forgot_password.html",
 	))
 )
 
@@ -198,25 +198,52 @@ func confirmHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func forgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
+func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		email := r.FormValue("email")
-		log.Println("successfull post")
+		newPassword := r.FormValue("new_password")
+		code := r.FormValue("code")
 
 		secretHash := createSecretHash(email, appClientID, appClientSecret)
-		// Initiate the forgot password flow in Cognito
-		fpoutput, err := cognitoClient.ForgotPassword(&cognitoidentityprovider.ForgotPasswordInput{
-			ClientId:   &appClientID,
-			Username:   &email,
-			SecretHash: &secretHash,
+		// Confirm the forgot password request in Cognito
+		_, err := cognitoClient.ConfirmForgotPassword(&cognitoidentityprovider.ConfirmForgotPasswordInput{
+			ClientId:         &appClientID,
+			Username:         &email,
+			Password:         &newPassword,
+			ConfirmationCode: &code,
+			SecretHash:       &secretHash,
 		})
-		log.Println(fpoutput)
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			log.Println("Error: ", err)
 			return
 		}
-		fmt.Fprintf(w, "Password reset email sent!")
+		fmt.Fprintf(w, "Password reset successful!")
+	} else {
+		// Render the reset password form
+		renderTemplate(w, "reset_password.html", nil)
+	}
+}
+
+func forgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		email := r.FormValue("email")
+
+		secretHash := createSecretHash(email, appClientID, appClientSecret)
+		// Initiate the forgot password flow in Cognito
+		_, err := cognitoClient.ForgotPassword(&cognitoidentityprovider.ForgotPasswordInput{
+			ClientId:   &appClientID,
+			Username:   &email,
+			SecretHash: &secretHash,
+		})
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Println("Error: ", err)
+			return
+		}
+		http.Redirect(w, r, "/reset", http.StatusSeeOther)
 
 	} else {
 		// Render the forgot password form
