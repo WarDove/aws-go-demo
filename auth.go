@@ -178,7 +178,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error getting user:", err)
 		} else {
 			http.Redirect(w, r, "/", http.StatusFound)
-			log.Printf("Get user output: \n%v", resp)
+			log.Printf("Successfull user login: \n%v", resp)
 			// Getting attributes and Group from user
 			//userAttributes := resp.UserAttributes
 			//groups := resp.GroupMembership

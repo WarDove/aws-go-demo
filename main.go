@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
@@ -117,25 +116,16 @@ func main() {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 		sessionAccessToken := session.Values["accessToken"].(string)
-
 		params := &cognitoidentityprovider.GetUserInput{
 			AccessToken: aws.String(sessionAccessToken),
 		}
-
-		resp, err := cognitoClient.GetUser(params)
+		_, err = cognitoClient.GetUser(params)
 		if err != nil {
 			log.Println("Error getting user:", err)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
-
-		log.Printf("Get user output: \n%v", resp)
-		// Getting attributes and Group from user
-		//userAttributes := resp.UserAttributes
-		//groups := resp.GroupMembership
-
 		email, ok := session.Values["email"].(string)
 		if !ok {
 			http.Redirect(w, r, "/login", http.StatusFound)
@@ -193,20 +183,30 @@ func main() {
 
 	http.HandleFunc("/log", func(w http.ResponseWriter, r *http.Request) {
 
+		// Session cookie AccessToken validation - check user authentication
 		session, err := store.Get(r, "userSession")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		if session.Values["authenticated"] != true {
+		sessionAccessToken := session.Values["accessToken"].(string)
+		params := &cognitoidentityprovider.GetUserInput{
+			AccessToken: aws.String(sessionAccessToken),
+		}
+		_, err = cognitoClient.GetUser(params)
+		if err != nil {
+			log.Println("Error getting user:", err)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		email, ok := session.Values["email"].(string)
+		if !ok {
+			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
 
 		ip := r.RemoteAddr
 		timestamp := time.Now().UTC()
-		email := session.Values["email"]
 
 		_, err = db.Exec("INSERT INTO userLog (ip, timestamp, email) VALUES ($1, $2, $3)", ip, timestamp, email)
 		if err != nil {
@@ -214,7 +214,41 @@ func main() {
 			return
 		}
 
-		fmt.Fprintf(w, "Logged record from %s at %s by %s", ip, timestamp, email)
+		data := struct {
+			Ip        string
+			Timestamp time.Time
+			Email     string
+		}{
+			Ip:        ip,
+			Timestamp: timestamp,
+			Email:     email,
+		}
+
+		tmpl, err := template.New("log").Parse(`
+		<!doctype html>
+		<html>
+		<head><title>Add log record</title></head>
+		<body>
+			<h2>User Email: {{.Email}}</h2>
+			<h2>Logged record from {{.Ip}} at {{.Timestamp}} by {{.Email}}</h2>
+
+			<form method="GET" action="/">
+				<button type="submit">BACK</button>
+			</form>
+		</body>
+		</html>
+		`)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = tmpl.Execute(w, data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Printf("Logged record from %s at %s by %s", ip, timestamp, email)
 	})
 
 	err = http.ListenAndServe(":80", nil)
