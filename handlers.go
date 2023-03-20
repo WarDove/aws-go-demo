@@ -201,18 +201,23 @@ func confirmHandler(w http.ResponseWriter, r *http.Request) {
 func forgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		email := r.FormValue("email")
+		log.Println("successfull post")
 
+		secretHash := createSecretHash(email, appClientID, appClientSecret)
 		// Initiate the forgot password flow in Cognito
-		_, err := cognitoClient.ForgotPassword(&cognitoidentityprovider.ForgotPasswordInput{
-			ClientId: &appClientID,
-			Username: &email,
+		fpoutput, err := cognitoClient.ForgotPassword(&cognitoidentityprovider.ForgotPasswordInput{
+			ClientId:   &appClientID,
+			Username:   &email,
+			SecretHash: &secretHash,
 		})
+		log.Println(fpoutput)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Println("Error: ", err)
 			return
 		}
-
 		fmt.Fprintf(w, "Password reset email sent!")
+
 	} else {
 		// Render the forgot password form
 		renderTemplate(w, "forgot_password.html", nil)
