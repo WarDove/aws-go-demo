@@ -17,7 +17,7 @@ import (
 var (
 	appClientID     string = "q62763s8s2hhk0hsdtge82f7a"
 	appClientSecret string = "1df1cvo0m97ipc8q793knjmd82tmc8gn94f7fn4n0t0o093b1ibb"
-	store                  = sessions.NewCookieStore([]byte("someverysecretkey"))
+	store                  = sessions.NewCookieStore([]byte("someverysecretkey")) // TODO: store as secret!
 	templates              = template.Must(template.ParseFiles(
 		"templates/signup.html", "templates/login.html", "templates/confirm.html", "templates/forgot_password.html",
 	))
@@ -105,7 +105,7 @@ func signUpHandler(w http.ResponseWriter, r *http.Request) {
 func confirmHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		email := r.FormValue("email")
-		confirmation_code := r.FormValue("confirmation_code")
+		conformationCode := r.FormValue("conformationCode")
 
 		// Calculate the SecretHash
 		secretHash := createSecretHash(email, appClientID, appClientSecret)
@@ -113,7 +113,7 @@ func confirmHandler(w http.ResponseWriter, r *http.Request) {
 		_, err := cognitoClient.ConfirmSignUp(&cognitoidentityprovider.ConfirmSignUpInput{
 			ClientId:         &appClientID,
 			Username:         &email,
-			ConfirmationCode: &confirmation_code,
+			ConfirmationCode: &conformationCode,
 			SecretHash:       &secretHash,
 		})
 
@@ -158,15 +158,32 @@ func forgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	// Check if user is already authenticated
+
+	// Session cookie AccessToken validation - check user authentication
 	session, err := store.Get(r, "userSession")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if session.Values["authenticated"] == true {
-		http.Redirect(w, r, "/", http.StatusFound)
-		return
+
+	sessionAccessToken := session.Values["accessToken"].(string)
+
+	if sessionAccessToken != "" {
+		params := &cognitoidentityprovider.GetUserInput{
+			AccessToken: aws.String(sessionAccessToken),
+		}
+
+		resp, err := cognitoClient.GetUser(params)
+		if err != nil {
+			log.Println("Error getting user:", err)
+		} else {
+			http.Redirect(w, r, "/", http.StatusFound)
+			log.Printf("Get user output: \n%v", resp)
+			// Getting attributes and Group from user
+			//userAttributes := resp.UserAttributes
+			//groups := resp.GroupMembership
+			return
+		}
 	}
 
 	// Get form data
@@ -210,10 +227,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set session cookie
-	session.Values["authenticated"] = true
+	session.Values["email"] = email
 	session.Values["accessToken"] = *authResult.AuthenticationResult.AccessToken
 	//session.Values["idToken"] = authResult.AuthenticationResult.IdToken
-	session.Values["email"] = email
+
 	err = session.Save(r, w)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

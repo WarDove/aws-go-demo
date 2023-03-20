@@ -111,16 +111,30 @@ func main() {
 	// Define route handlers
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
+		// Session cookie AccessToken validation - check user authentication
 		session, err := store.Get(r, "userSession")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if session.Values["authenticated"] != true {
+		sessionAccessToken := session.Values["accessToken"].(string)
+
+		params := &cognitoidentityprovider.GetUserInput{
+			AccessToken: aws.String(sessionAccessToken),
+		}
+
+		resp, err := cognitoClient.GetUser(params)
+		if err != nil {
+			log.Println("Error getting user:", err)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
+
+		log.Printf("Get user output: \n%v", resp)
+		// Getting attributes and Group from user
+		//userAttributes := resp.UserAttributes
+		//groups := resp.GroupMembership
 
 		email, ok := session.Values["email"].(string)
 		if !ok {
@@ -209,5 +223,4 @@ func main() {
 	} else {
 		log.Println("listening on port 80...")
 	}
-
 }
