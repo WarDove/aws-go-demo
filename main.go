@@ -2,11 +2,9 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
-	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -14,6 +12,7 @@ import (
 )
 
 var (
+	db            *sql.DB
 	cognitoClient *cognitoidentityprovider.CognitoIdentityProvider
 )
 
@@ -74,13 +73,6 @@ func getLastRecords(db *sql.DB, n int) []struct {
 
 func main() {
 
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/signup", signUpHandler)
-	http.HandleFunc("/confirm", confirmHandler)
-	http.HandleFunc("/forgot_password", forgotPasswordHandler)
-
-	// Extend cookie size to 8KB
-
 	// Set up AWS session and Cognito client
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String("eu-west-1"), // replace with your desired region
@@ -89,7 +81,7 @@ func main() {
 	cognitoClient = cognitoidentityprovider.New(sess)
 
 	// Set up database connection
-	db, err := sql.Open("postgres", "postgres://demouser:demopass@localhost/awsgodemo?sslmode=disable")
+	db, err = sql.Open("postgres", "postgres://demouser:demopass@localhost/awsgodemo?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
@@ -108,91 +100,46 @@ func main() {
 		panic(err)
 	}
 
-	// Define route handlers
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/signup", signUpHandler)
+	http.HandleFunc("/confirm", confirmHandler)
+	http.HandleFunc("/forgot_password", forgotPasswordHandler)
+	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/reset", resetPasswordHandler)
+	http.HandleFunc("/", mainHandler)
 
-		session, err := store.Get(r, "userSession")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if session.Values["authenticated"] != true {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		email, ok := session.Values["email"].(string)
-		if !ok {
-			http.Redirect(w, r, "/login", http.StatusFound)
-			return
-		}
-
-		data := struct {
-			Email      string
-			InstanceId string
-			PrivateIp  string
-			Records    []struct {
-				Ip        string
-				Timestamp time.Time
-				Email     string
-			}
-		}{
-			Email:      email,
-			InstanceId: getMetadata("instance-id"),
-			PrivateIp:  getMetadata("local-ipv4"),
-			Records:    getLastRecords(db, 5),
-		}
-
-		tmpl, err := template.New("index").Parse(`
-		<!doctype html>
-		<html>
-		<head><title>EC2 Instance Metadata</title></head>
-		<body>
-			<h2>User Email: {{.Email}}</h2>
-			<h1>EC2 Instance Metadata</h1>
-			<p><strong>Instance ID:</strong> {{.InstanceId}}</p>
-			<p><strong>Private IP:</strong> {{.PrivateIp}}</p>
-			<h2>Last 5 log entries:</h2>
-			<ul>
-			{{range .Records}}
-				<li>SourceIP: {{.Ip}}, Timestamp: {{.Timestamp}}, User Email: {{.Email}} </li>
-			{{end}}
-			</ul>
-			<form method="POST" action="/log">
-				<button type="submit">LOG</button>
-			</form>
-		</body>
-		</html>
-		`)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		err = tmpl.Execute(w, data)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	})
-
+	// TODO: move to handlers once we have ssm solution
 	http.HandleFunc("/log", func(w http.ResponseWriter, r *http.Request) {
 
+		// Session cookie AccessToken validation - check user authentication
+
 		session, err := store.Get(r, "userSession")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if session.Values["authenticated"] != true {
+		if session.Values["accessToken"] != nil {
+			sessionAccessToken := session.Values["accessToken"].(string)
+			params := &cognitoidentityprovider.GetUserInput{
+				AccessToken: aws.String(sessionAccessToken),
+			}
+			_, err = cognitoClient.GetUser(params)
+			if err != nil {
+				log.Println("Error getting user:", err)
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+				return
+			}
+		} else if session.Values["accessToken"] == nil {
+			log.Println("Error getting user:", "accessToken is nil")
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
+
+		email := session.Values["email"].(string)
 
 		ip := r.RemoteAddr
 		timestamp := time.Now().UTC()
-		email := session.Values["email"]
 
 		_, err = db.Exec("INSERT INTO userLog (ip, timestamp, email) VALUES ($1, $2, $3)", ip, timestamp, email)
 		if err != nil {
@@ -200,7 +147,18 @@ func main() {
 			return
 		}
 
-		fmt.Fprintf(w, "Logged record from %s at %s by %s", ip, timestamp, email)
+		data := struct {
+			Ip        string
+			Timestamp time.Time
+			Email     string
+		}{
+			Ip:        ip,
+			Timestamp: timestamp,
+			Email:     email,
+		}
+
+		renderTemplate(w, "log.html", data)
+		log.Printf("Logged record from %s at %s by %s", ip, timestamp, email)
 	})
 
 	err = http.ListenAndServe(":80", nil)
@@ -209,5 +167,4 @@ func main() {
 	} else {
 		log.Println("listening on port 80...")
 	}
-
 }
