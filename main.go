@@ -78,8 +78,6 @@ func main() {
 	http.HandleFunc("/confirm", confirmHandler)
 	http.HandleFunc("/forgot_password", forgotPasswordHandler)
 
-	// Extend cookie size to 8KB
-
 	// Set up AWS session and Cognito client
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String("eu-west-1"), // replace with your desired region
@@ -107,6 +105,21 @@ func main() {
 		panic(err)
 	}
 
+	http.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		session, err := store.Get(r, "userSession")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		session.Options.MaxAge = -1 // delete session cookie
+		err = session.Save(r, w)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	})
+
 	// Define route handlers
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
@@ -116,21 +129,25 @@ func main() {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		sessionAccessToken := session.Values["accessToken"].(string)
-		params := &cognitoidentityprovider.GetUserInput{
-			AccessToken: aws.String(sessionAccessToken),
-		}
-		_, err = cognitoClient.GetUser(params)
-		if err != nil {
-			log.Println("Error getting user:", err)
+
+		if session.Values["accessToken"] != nil {
+			sessionAccessToken := session.Values["accessToken"].(string)
+			params := &cognitoidentityprovider.GetUserInput{
+				AccessToken: aws.String(sessionAccessToken),
+			}
+			_, err = cognitoClient.GetUser(params)
+			if err != nil {
+				log.Println("Error getting user:", err)
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+				return
+			}
+		} else if session.Values["accessToken"] == nil {
+			log.Println("Error getting user:", "accessToken is nil")
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
-		email, ok := session.Values["email"].(string)
-		if !ok {
-			http.Redirect(w, r, "/login", http.StatusFound)
-			return
-		}
+
+		email := session.Values["email"].(string)
 
 		data := struct {
 			Email      string
@@ -166,6 +183,9 @@ func main() {
 			<form method="POST" action="/log">
 				<button type="submit">LOG</button>
 			</form>
+			<form method="GET" action="/logout">
+				<button type="submit">Sign out</button>
+			</form>
 		</body>
 		</html>
 		`)
@@ -184,26 +204,31 @@ func main() {
 	http.HandleFunc("/log", func(w http.ResponseWriter, r *http.Request) {
 
 		// Session cookie AccessToken validation - check user authentication
+
 		session, err := store.Get(r, "userSession")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		sessionAccessToken := session.Values["accessToken"].(string)
-		params := &cognitoidentityprovider.GetUserInput{
-			AccessToken: aws.String(sessionAccessToken),
-		}
-		_, err = cognitoClient.GetUser(params)
-		if err != nil {
-			log.Println("Error getting user:", err)
+
+		if session.Values["accessToken"] != nil {
+			sessionAccessToken := session.Values["accessToken"].(string)
+			params := &cognitoidentityprovider.GetUserInput{
+				AccessToken: aws.String(sessionAccessToken),
+			}
+			_, err = cognitoClient.GetUser(params)
+			if err != nil {
+				log.Println("Error getting user:", err)
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+				return
+			}
+		} else if session.Values["accessToken"] == nil {
+			log.Println("Error getting user:", "accessToken is nil")
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
-		email, ok := session.Values["email"].(string)
-		if !ok {
-			http.Redirect(w, r, "/login", http.StatusFound)
-			return
-		}
+
+		email := session.Values["email"].(string)
 
 		ip := r.RemoteAddr
 		timestamp := time.Now().UTC()

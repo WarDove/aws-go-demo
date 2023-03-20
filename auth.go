@@ -166,9 +166,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionAccessToken := session.Values["accessToken"].(string)
+	if session.Values["accessToken"] != nil {
+		sessionAccessToken := session.Values["accessToken"].(string)
 
-	if sessionAccessToken != "" {
 		params := &cognitoidentityprovider.GetUserInput{
 			AccessToken: aws.String(sessionAccessToken),
 		}
