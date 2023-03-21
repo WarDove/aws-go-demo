@@ -14,6 +14,7 @@ import (
 var (
 	db            *sql.DB
 	cognitoClient *cognitoidentityprovider.CognitoIdentityProvider
+	testSSMParam  string
 )
 
 func getMetadata(path string) string {
@@ -72,6 +73,8 @@ func getLastRecords(db *sql.DB, n int) []struct {
 }
 
 func main() {
+
+	log.Printf("starting app... test ssm param: %v", testSSMParam)
 
 	// Set up AWS session and Cognito client
 	sess, err := session.NewSession(&aws.Config{
