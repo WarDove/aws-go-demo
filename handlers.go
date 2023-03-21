@@ -7,21 +7,10 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
-	"github.com/gorilla/sessions"
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
-	"text/template"
 	"time"
-)
-
-var (
-	appClientID     string = "q62763s8s2hhk0hsdtge82f7a"
-	appClientSecret string = "1df1cvo0m97ipc8q793knjmd82tmc8gn94f7fn4n0t0o093b1ibb"
-	store                  = sessions.NewCookieStore([]byte("someverysecretkey")) // TODO: store as secret!
-	templates              = template.Must(template.ParseFiles(
-		"templates/reset_password.html", "templates/log.html", "templates/index.html", "templates/signup.html", "templates/login.html", "templates/confirm.html", "templates/forgot_password.html",
-	))
 )
 
 func renderTemplate(w http.ResponseWriter, name string, data interface{}) {
@@ -40,7 +29,7 @@ func renderTemplate(w http.ResponseWriter, name string, data interface{}) {
 func mainHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Session cookie AccessToken validation - check user authentication
-	session, err := store.Get(r, "userSession")
+	session, err := sessionStore.Get(r, "userSession")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -84,7 +73,7 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := store.Get(r, "userSession")
+	session, err := sessionStore.Get(r, "userSession")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -254,7 +243,7 @@ func forgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Session cookie AccessToken validation - check user authentication
-	session, err := store.Get(r, "userSession")
+	session, err := sessionStore.Get(r, "userSession")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

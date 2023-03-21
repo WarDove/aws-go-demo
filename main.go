@@ -3,18 +3,11 @@ package main
 import (
 	"database/sql"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
-)
-
-var (
-	db            *sql.DB
-	cognitoClient *cognitoidentityprovider.CognitoIdentityProvider
-	testSSMParam  string
 )
 
 func getMetadata(path string) string {
@@ -74,24 +67,8 @@ func getLastRecords(db *sql.DB, n int) []struct {
 
 func main() {
 
-	log.Printf("starting app... test ssm param: %v", testSSMParam)
-
-	// Set up AWS session and Cognito client
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("eu-west-1"), // replace with your desired region
-	})
-
-	cognitoClient = cognitoidentityprovider.New(sess)
-
-	// Set up database connection
-	db, err = sql.Open("postgres", "postgres://demouser:demopass@localhost/awsgodemo?sslmode=disable")
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
 	// Create table for storing user log data
-	_, err = db.Exec(`
+	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS userLog (
 			id SERIAL PRIMARY KEY,
 			ip TEXT,
@@ -116,7 +93,7 @@ func main() {
 
 		// Session cookie AccessToken validation - check user authentication
 
-		session, err := store.Get(r, "userSession")
+		session, err := sessionStore.Get(r, "userSession")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
