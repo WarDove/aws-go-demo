@@ -67,6 +67,8 @@ func getLastRecords(db *sql.DB, n int) []struct {
 
 func main() {
 
+	// Defer DB connection
+	defer db.Close()
 	// Create table for storing user log data
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS userLog (
@@ -111,7 +113,7 @@ func main() {
 				return
 			}
 		} else if session.Values["accessToken"] == nil {
-			log.Println("Error getting user:", "accessToken is nil")
+			log.Println("Info, cannot load user:", "accessToken is nil")
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}

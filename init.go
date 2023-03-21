@@ -108,5 +108,4 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
 }
