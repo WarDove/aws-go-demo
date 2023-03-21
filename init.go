@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
@@ -46,19 +47,44 @@ func init() {
 
 	var err error
 
-	ssmPath := "/go-demo/"
+	ssmPath := "/go-demo/" // TODO: add as an environment variable
 
-	appClientID, err = getParam(ssmPath + "appClientID")
+	appClientID, err = getParam(ssmPath + "APP_CLIENT_ID")
 	if err != nil {
 		log.Fatalf("Error retrieving value from SSM: %v", err)
 	}
 
-	appClientSecret, err = getParam(ssmPath + "appClientSecret")
+	appClientSecret, err = getParam(ssmPath + "APP_CLIENT_SECRET")
 	if err != nil {
 		log.Fatalf("Error retrieving value from SSM: %v", err)
 	}
 
-	sessionEnryptSecret, err := getParam(ssmPath + "sessionEnryptSecret")
+	sessionEnryptSecret, err := getParam(ssmPath + "SESSION_ENCRYPTION_SECRET")
+	if err != nil {
+		log.Fatalf("Error retrieving value from SSM: %v", err)
+	}
+
+	dbHost, err := getParam(ssmPath + "DB_HOST")
+	if err != nil {
+		log.Fatalf("Error retrieving value from SSM: %v", err)
+	}
+
+	dbEngine, err := getParam(ssmPath + "DB_ENGINE")
+	if err != nil {
+		log.Fatalf("Error retrieving value from SSM: %v", err)
+	}
+
+	dbName, err := getParam(ssmPath + "DB_NAME")
+	if err != nil {
+		log.Fatalf("Error retrieving value from SSM: %v", err)
+	}
+
+	dbUserName, err := getParam(ssmPath + "DB_USERNAME")
+	if err != nil {
+		log.Fatalf("Error retrieving value from SSM: %v", err)
+	}
+
+	dbPassword, err := getParam(ssmPath + "DB_PASSWORD")
 	if err != nil {
 		log.Fatalf("Error retrieving value from SSM: %v", err)
 	}
@@ -77,7 +103,8 @@ func init() {
 	cognitoClient = cognitoidentityprovider.New(sess)
 
 	// Set up database connection
-	db, err = sql.Open("postgres", "postgres://demouser:demopass@localhost/awsgodemo?sslmode=disable") // TODO: store as secret!
+	dataSourceName := fmt.Sprintf("%s://%s:%s@%s/%s?sslmode=disable", dbEngine, dbUserName, dbPassword, dbHost, dbName)
+	db, err = sql.Open(dbEngine, dataSourceName)
 	if err != nil {
 		panic(err)
 	}
