@@ -47,7 +47,7 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else if session.Values["accessToken"] == nil {
-		log.Println("Error getting user:", "accessToken is nil")
+		log.Println("Info, cannot load user:", "accessToken is nil")
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -320,4 +320,55 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func logHandler(w http.ResponseWriter, r *http.Request) {
+
+	// Session cookie AccessToken validation - check user authentication
+	session, err := sessionStore.Get(r, "userSession")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if session.Values["accessToken"] != nil {
+		sessionAccessToken := session.Values["accessToken"].(string)
+		params := &cognitoidentityprovider.GetUserInput{
+			AccessToken: aws.String(sessionAccessToken),
+		}
+		_, err = cognitoClient.GetUser(params)
+		if err != nil {
+			log.Println("Error getting user:", err)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+	} else if session.Values["accessToken"] == nil {
+		log.Println("Info, cannot load user:", "accessToken is nil")
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	email := session.Values["email"].(string)
+
+	ip := r.RemoteAddr
+	timestamp := time.Now().UTC()
+
+	_, err = db.Exec("INSERT INTO userLog (ip, timestamp, email) VALUES ($1, $2, $3)", ip, timestamp, email)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		Ip        string
+		Timestamp time.Time
+		Email     string
+	}{
+		Ip:        ip,
+		Timestamp: timestamp,
+		Email:     email,
+	}
+
+	renderTemplate(w, "log.html", data)
+	log.Printf("Logged record from %s at %s by %s", ip, timestamp, email)
 }

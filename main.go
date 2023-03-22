@@ -2,8 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -69,6 +67,7 @@ func main() {
 
 	// Defer DB connection
 	defer db.Close()
+
 	// Create table for storing user log data
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS userLog (
@@ -82,66 +81,14 @@ func main() {
 		panic(err)
 	}
 
+	http.HandleFunc("/", mainHandler)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/signup", signUpHandler)
 	http.HandleFunc("/confirm", confirmHandler)
 	http.HandleFunc("/forgot_password", forgotPasswordHandler)
 	http.HandleFunc("/logout", logoutHandler)
 	http.HandleFunc("/reset", resetPasswordHandler)
-	http.HandleFunc("/", mainHandler)
-
-	// TODO: move to handlers once we have ssm solution
-	http.HandleFunc("/log", func(w http.ResponseWriter, r *http.Request) {
-
-		// Session cookie AccessToken validation - check user authentication
-
-		session, err := sessionStore.Get(r, "userSession")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if session.Values["accessToken"] != nil {
-			sessionAccessToken := session.Values["accessToken"].(string)
-			params := &cognitoidentityprovider.GetUserInput{
-				AccessToken: aws.String(sessionAccessToken),
-			}
-			_, err = cognitoClient.GetUser(params)
-			if err != nil {
-				log.Println("Error getting user:", err)
-				http.Redirect(w, r, "/login", http.StatusSeeOther)
-				return
-			}
-		} else if session.Values["accessToken"] == nil {
-			log.Println("Info, cannot load user:", "accessToken is nil")
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		email := session.Values["email"].(string)
-
-		ip := r.RemoteAddr
-		timestamp := time.Now().UTC()
-
-		_, err = db.Exec("INSERT INTO userLog (ip, timestamp, email) VALUES ($1, $2, $3)", ip, timestamp, email)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		data := struct {
-			Ip        string
-			Timestamp time.Time
-			Email     string
-		}{
-			Ip:        ip,
-			Timestamp: timestamp,
-			Email:     email,
-		}
-
-		renderTemplate(w, "log.html", data)
-		log.Printf("Logged record from %s at %s by %s", ip, timestamp, email)
-	})
+	http.HandleFunc("/log", logHandler)
 
 	err = http.ListenAndServe(":80", nil)
 	if err != nil {
