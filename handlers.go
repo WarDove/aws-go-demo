@@ -163,7 +163,7 @@ func signUpHandler(w http.ResponseWriter, r *http.Request) {
 func confirmHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		email := r.FormValue("email")
-		conformationCode := r.FormValue("conformationCode")
+		conformationCode := r.FormValue("confirmation_code")
 
 		// Calculate the SecretHash
 		secretHash := createSecretHash(email, appClientID, appClientSecret)
@@ -174,10 +174,7 @@ func confirmHandler(w http.ResponseWriter, r *http.Request) {
 			ConfirmationCode: &conformationCode,
 			SecretHash:       &secretHash,
 		})
-
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			http.Error(w, "Passwords do not match", http.StatusBadRequest)
 			data := struct {
 				Error error
 			}{
@@ -186,7 +183,7 @@ func confirmHandler(w http.ResponseWriter, r *http.Request) {
 			renderTemplate(w, "confirm.html", data)
 			return
 		}
-		log.Printf("Confirmation successful! user: %s\", email")
+		//log.Printf("Confirmation successful! user: %s", email)
 		fmt.Fprintf(w, "Confirmation successful! ")
 
 	} else {
