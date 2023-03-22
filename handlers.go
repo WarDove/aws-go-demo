@@ -78,11 +78,16 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	email := session.Values["email"].(string)
+
 	session.Options.MaxAge = -1 // delete session cookie
 	err = session.Save(r, w)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	} else {
+		log.Printf("Info: User %s logged out", email)
 	}
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
@@ -141,6 +146,8 @@ func signUpHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			renderTemplate(w, "signup.html", data)
 			return
+		} else {
+			log.Printf("Successful signup! user: %s", email)
 		}
 
 		// Render the confirmation code form
@@ -179,7 +186,8 @@ func confirmHandler(w http.ResponseWriter, r *http.Request) {
 			renderTemplate(w, "confirm.html", data)
 			return
 		}
-		fmt.Fprintf(w, "Confirmation successful!")
+		log.Printf("Confirmation successful! user: %s\", email")
+		fmt.Fprintf(w, "Confirmation successful! ")
 
 	} else {
 		// Render the confirmation form
@@ -208,6 +216,7 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error: ", err)
 			return
 		}
+		log.Printf("Password reset successful! user: %s", email)
 		fmt.Fprintf(w, "Password reset successful!")
 	} else {
 		// Render the reset password form
@@ -261,7 +270,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error getting user:", err)
 		} else {
 			http.Redirect(w, r, "/", http.StatusFound)
-			log.Printf("Successfull user login: \n%v", resp)
+			log.Printf("Info: Successfull user login. Response output:\n%v", resp)
 			// Getting attributes and Group from user
 			//userAttributes := resp.UserAttributes
 			//groups := resp.GroupMembership
@@ -306,6 +315,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			Error: err.Error(),
 		}
 		renderTemplate(w, "login.html", data)
+		log.Printf("Incorrect username or password. email:%s ", email)
 		return
 	}
 
