@@ -8,11 +8,14 @@ import (
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/gorilla/sessions"
+	"github.com/joho/godotenv"
 	"log"
+	"os"
 	"text/template"
 )
 
 var (
+	region          string
 	appClientID     string
 	appClientSecret string
 	sessionStore    *sessions.CookieStore
@@ -47,7 +50,13 @@ func init() {
 
 	var err error
 
-	ssmPath := "/go-demo/" // TODO: add as an environment variable
+	// Loading .env file
+	err = godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	ssmPath := os.Getenv("SSM_SECRET_PATH")
 
 	appClientID, err = getParam(ssmPath + "APP_CLIENT_ID")
 	if err != nil {
@@ -97,7 +106,7 @@ func init() {
 
 	// Set up AWS session and Cognito client
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("eu-west-1"),
+		Region: aws.String(getMetadata("placement/region")),
 	})
 
 	cognitoClient = cognitoidentityprovider.New(sess)

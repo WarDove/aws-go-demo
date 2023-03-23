@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/aws/aws-sdk-go v1.44.224
 	github.com/gorilla/sessions v1.2.1
+	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.7
 )
 
