@@ -414,6 +414,9 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 
 	email := session.Values["email"].(string)
 
+	// Consider to change the source IP variable before using alb
+	//ip := r.Header.Get("X-Forwarded-For")
+
 	ip := r.RemoteAddr
 	timestamp := time.Now().UTC()
 
