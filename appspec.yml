@@ -2,7 +2,7 @@ version: 0.0
 os: linux
 files:
   - source: templates/
-    destination: /home/ubuntu/demo-app/templates
+    destination: /home/ubuntu/demo-app/templates/
   - source: main
     destination: /home/ubuntu/demo-app/
   - source: .env
