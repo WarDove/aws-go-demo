@@ -1,12 +1,8 @@
 version: 0.0
 os: linux
 files:
-  - source: templates/*
-    destination: /home/ubuntu/demo-app/templates/
-  - source: main
+  - source: .
     destination: /home/ubuntu/demo-app/
-  - source: .env
-    destination: /home/ubuntu/demo-app/    
 hooks:
   BeforeInstall:
     - location: scripts/uninstall.sh
