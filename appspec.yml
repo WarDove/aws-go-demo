@@ -13,11 +13,9 @@ hooks:
       runas: root
   AfterInstall:
     - location: scripts/executable.sh
-      timeout: 10
       runas: root
   ApplicationStart:
     - location: scripts/start.sh
-      timeout: 10
       runas: root
   ValidateService:
     - location: scripts/serviceCheck.sh
