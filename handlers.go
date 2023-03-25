@@ -137,8 +137,9 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := session.Values["email"].(string)
-
-	session.Options.MaxAge = -1 // delete session cookie
+	
+	// delete session cookie
+	session.Options.MaxAge = -1 
 	err = session.Save(r, w)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
