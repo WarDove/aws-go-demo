@@ -7,6 +7,7 @@ import (
 
 func main() {
 	
+	
 	// Defer DB connection
 	defer db.Close()
 
