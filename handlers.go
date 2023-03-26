@@ -439,3 +439,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "log.html", data)
 	log.Printf("Logged record from %s at %s by %s", ip, timestamp, email)
 }
+
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}

@@ -24,6 +24,7 @@ func main() {
 	}
 
 	http.HandleFunc("/", mainHandler)
+	http.HandleFunc("/health", healthCheck)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/signup", signUpHandler)
 	http.HandleFunc("/confirm", confirmHandler)
