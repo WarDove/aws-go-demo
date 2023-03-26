@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	region          string = getMetadata("placement/region"
+	region          string = getMetadata("placement/region")
 	appClientID     string
 	appClientSecret string
 	sessionStore    *sessions.CookieStore
