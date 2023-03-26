@@ -137,8 +137,9 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := session.Values["email"].(string)
-
-	session.Options.MaxAge = -1 // delete session cookie
+	
+	// delete session cookie
+	session.Options.MaxAge = -1 
 	err = session.Save(r, w)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -417,7 +418,7 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 	// If instance is behind an ALB/PROXY use X-Forwarded-For header instead
 	//  ip := r.RemoteAddr
 	ip := r.Header.Get("X-Forwarded-For")
-	
+
 	timestamp := time.Now().UTC()
 
 	_, err = db.Exec("INSERT INTO userLog (ip, timestamp, email) VALUES ($1, $2, $3)", ip, timestamp, email)
