@@ -240,7 +240,7 @@ func confirmHandler(w http.ResponseWriter, r *http.Request) {
 			renderTemplate(w, "confirm.html", data)
 			return
 		}
-		//log.Printf("Confirmation successful! user: %s", email)
+		// TODO: success screen with back button
 		fmt.Fprintf(w, "Confirmation successful! ")
 
 	} else {
