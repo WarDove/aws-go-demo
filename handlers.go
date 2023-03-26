@@ -414,10 +414,10 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 
 	email := session.Values["email"].(string)
 
-	// Consider to change the source IP variable before using alb
-	ip := r.Header.Get("X-Forwarded-For")
-
+	// If instance is behind an ALB/PROXY use X-Forwarded-For header instead
 	//  ip := r.RemoteAddr
+	ip := r.Header.Get("X-Forwarded-For")
+	
 	timestamp := time.Now().UTC()
 
 	_, err = db.Exec("INSERT INTO userLog (ip, timestamp, email) VALUES ($1, $2, $3)", ip, timestamp, email)
