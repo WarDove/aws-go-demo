@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	region          string
+	region          string = getMetadata("placement/region")
 	appClientID     string
 	appClientSecret string
 	sessionStore    *sessions.CookieStore
@@ -29,7 +29,7 @@ func getParam(name string) (value string, err error) {
 	ssmSession := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 		Config: aws.Config{
-			Region: aws.String("eu-west-1"),
+			Region: aws.String(region),
 		},
 	}))
 
@@ -106,7 +106,7 @@ func init() {
 
 	// Set up AWS session and Cognito client
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(getMetadata("placement/region")),
+		Region: aws.String(region),
 	})
 
 	cognitoClient = cognitoidentityprovider.New(sess)
