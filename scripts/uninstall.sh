@@ -1,5 +1,8 @@
 #!/bin/bash
 
+WORKDIR=/home/ubuntu/demo-app
+
 systemctl stop demo-app
-rm -rf /home/ubuntu/demo-app/*
-rm /home/ubuntu/demo-app/.*
+
+cd ${WORKDIR}
+rm -rf ..?* .[!.]* *
