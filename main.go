@@ -31,7 +31,7 @@ func getLastRequests(db *sql.DB, n int) []struct {
 } {
 	rows, err := db.Query(`
 		SELECT ip, timestamp
-		FROM requests
+		FROM userLog
 		ORDER BY id DESC
 		LIMIT $1
 	`, n)
@@ -73,7 +73,7 @@ func main() {
 
 	// Create table for storing request data
 	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS requests (
+		CREATE TABLE IF NOT EXISTS userLog (
 			id SERIAL PRIMARY KEY,
 			ip TEXT,
 			timestamp TIMESTAMP
@@ -132,7 +132,7 @@ func main() {
 		ip := r.RemoteAddr
 		timestamp := time.Now().UTC()
 
-		_, err := db.Exec("INSERT INTO requests (ip, timestamp) VALUES ($1, $2)", ip, timestamp)
+		_, err := db.Exec("INSERT INTO userLog (ip, timestamp) VALUES ($1, $2)", ip, timestamp)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
