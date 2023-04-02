@@ -1,3 +1,3 @@
 #!/bin/bash
 
-chmod +x /home/ubuntu/demo-app/main
+chmod +x ${APPDIR}/main

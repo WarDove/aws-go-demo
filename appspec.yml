@@ -2,7 +2,7 @@ version: 0.0
 os: linux
 files:
   - source: .
-    destination: /home/ubuntu/demo-app/
+    destination: /etc/demo-app/
     file_exists_behavior: OVERWRITE
 hooks:
   BeforeInstall:
