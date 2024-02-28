@@ -8,8 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/gorilla/sessions"
-	"github.com/joho/godotenv"
-	"log"
 	"os"
 	"text/template"
 )
@@ -48,57 +46,16 @@ func getParam(name string) (value string, err error) {
 
 func init() {
 
-	var err error
+	appClientID = os.Getenv("APP_CLIENT_ID")
+	appClientSecret = os.Getenv("APP_CLIENT_SECRET")
+	sessionEncryptSecret := os.Getenv("SESSION_ENCRYPTION_SECRET")
+	dbHost := os.Getenv("DB_HOST")
+	dbEngine := os.Getenv("DB_ENGINE")
+	dbName := os.Getenv("DB_NAME")
+	dbUserName := os.Getenv("DB_USERNAME")
+	dbPassword := os.Getenv("DB_PASSWORD")
 
-	// Loading .env file
-	err = godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	ssmPath := os.Getenv("SSM_SECRET_PATH")
-
-	appClientID, err = getParam(ssmPath + "APP_CLIENT_ID")
-	if err != nil {
-		log.Fatalf("Error retrieving value from SSM: %v", err)
-	}
-
-	appClientSecret, err = getParam(ssmPath + "APP_CLIENT_SECRET")
-	if err != nil {
-		log.Fatalf("Error retrieving value from SSM: %v", err)
-	}
-
-	sessionEnryptSecret, err := getParam(ssmPath + "SESSION_ENCRYPTION_SECRET")
-	if err != nil {
-		log.Fatalf("Error retrieving value from SSM: %v", err)
-	}
-
-	dbHost, err := getParam(ssmPath + "DB_HOST")
-	if err != nil {
-		log.Fatalf("Error retrieving value from SSM: %v", err)
-	}
-
-	dbEngine, err := getParam(ssmPath + "DB_ENGINE")
-	if err != nil {
-		log.Fatalf("Error retrieving value from SSM: %v", err)
-	}
-
-	dbName, err := getParam(ssmPath + "DB_NAME")
-	if err != nil {
-		log.Fatalf("Error retrieving value from SSM: %v", err)
-	}
-
-	dbUserName, err := getParam(ssmPath + "DB_USERNAME")
-	if err != nil {
-		log.Fatalf("Error retrieving value from SSM: %v", err)
-	}
-
-	dbPassword, err := getParam(ssmPath + "DB_PASSWORD")
-	if err != nil {
-		log.Fatalf("Error retrieving value from SSM: %v", err)
-	}
-
-	sessionStore = sessions.NewCookieStore([]byte(sessionEnryptSecret))
+	sessionStore = sessions.NewCookieStore([]byte(sessionEncryptSecret))
 
 	templates = template.Must(template.ParseFiles(
 		"templates/reset_password.html", "templates/log.html", "templates/index.html", "templates/signup.html", "templates/login.html", "templates/confirm.html", "templates/forgot_password.html",

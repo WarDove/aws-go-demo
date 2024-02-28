@@ -19,6 +19,7 @@ func main() {
 			timestamp TIMESTAMP
 		)
 	`)
+
 	if err != nil {
 		panic(err)
 	}
