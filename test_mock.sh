@@ -2,4 +2,4 @@
 set -e
 
 # Here could be your test :)
-echo "Test passed!"
+echo "Test passed!!!"
