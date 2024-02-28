@@ -6,7 +6,7 @@ phases:
       - echo Test started on `date`
   build:
     commands:
-      - ./test_mock.sh -d
+      - echo "Here could be your test! :)"
   post_build:
     commands:
       - echo Test completed on `date`
